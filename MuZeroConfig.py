@@ -11,7 +11,7 @@ class MuZeroConfig(object):
                  board_size: int = 64,
                  discount: float = 1.,
                  dirichlet_alpha: float = 3e-2,
-                 num_simulations: int = 1,
+                 num_simulations: int = 2,
                  batch_size: int = 512,
                  td_steps: int = 60,
                  lr_init: float = 1e-2,
@@ -27,7 +27,9 @@ class MuZeroConfig(object):
                  weight_decay: float = 1e-4,
                  momentum: float = 0.9,
                  lr_decay_rate: float = 0.1,
-                 channels: int = 128):
+                 channels: int = 128,
+                 boundary_min: int = -1,
+                 boundary_max: int = 1):
         
         ### Self-Play
         self.action_space_size = action_space_size
@@ -37,6 +39,9 @@ class MuZeroConfig(object):
         self.board_size = board_size
         self.num_simulations = num_simulations
         self.discount = discount
+
+        self.boundary_min = boundary_min
+        self.boundary_max = boundary_max
 
         # Root prior exploration noise.
         self.root_dirichlet_alpha = dirichlet_alpha

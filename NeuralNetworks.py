@@ -1,6 +1,6 @@
 #python 3.8
 
-import torch
+import torch.nn
 
 class Block(torch.nn.Module):
     def __init__(self, channels: int):
@@ -25,7 +25,7 @@ class Representation(torch.nn.Module):
         super().__init__()
 
         self.nn = torch.nn.Sequential( #https://pytorch.org/docs/stable/generated/torch.nn.Sequential.html
-            torch.nn.Conv2d(in_channels = 9, #https://pytorch.org/docs/stable/generated/torch.nn.Conv2d.html
+            torch.nn.Conv2d(in_channels = 2, #https://pytorch.org/docs/stable/generated/torch.nn.Conv2d.html
                             out_channels = channels,
                             kernel_size = 3,
                             padding = 1),

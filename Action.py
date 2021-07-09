@@ -1,3 +1,5 @@
+from numpy import zeros, bool
+
 from typing import List
 from Player import Player
 
@@ -7,6 +9,11 @@ class Action(object):
     self.index = index
     self.player = player
     self.coordinates = coordinates
+
+  def representation(self):
+    representation = zeros((9, 2, 8, 8), dtype = bool)
+    representation[0, 0 if self.player.player == -1 else 1, self.coordinates] = 1
+    return representation
 
   def __hash__(self):
     return self.index

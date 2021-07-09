@@ -8,26 +8,29 @@ from Action import Action
 from Player import Player
 
 class Node(object):
-    def __init__(self, prior: int, to_play: Player):
+    def __init__(self, prior: int, to_play: Player, hidden_state = None, discount: float = 1.):
         self.visit_count = 0
         self.prior = prior
         self.to_play = to_play
         self.value_sum = 0
-        self.children = {}
-        self.hidden_state = None
+        self.children = []
+        self.hidden_state = hidden_state
+        self.discount = discount
         self.reward = 0
 
-    def expand(self, actions: List[Action]):
-        for a in actions:
-            self.children[a] = Node(0, Player(-self.to_play.player))
+    def expand(self, actions: List[Action], hidden_state, policy, value):
+        moves = [[action, policy[0, action.index].item()] for action in actions]
+        d = policy.sum().item()
+
+        for action, policy in moves:
+            self.children.append([action, Node(d / policy, Player(self.to_play.player), hidden_state)])
 
     def addNoise(self, config: MuZeroConfig):
-        actions = list(self.children.keys())
-        noise = dirichlet([config.root_dirichlet_alpha] * len(actions))
+        noise = dirichlet([config.root_dirichlet_alpha] * len(self.children))
 
-        for a, n in zip(actions, noise):
-            self.children[a].prior = self.children[a].prior * (
-                1 - config.root_exploration_fraction) + n * config.root_exploration_fraction
+        for i in range(len(self.children)):
+            self.children[i][1].prior = self.children[i][1].prior * (
+                1 - config.root_exploration_fraction) + noise[i] * config.root_exploration_fraction
 
     def expanded(self) -> bool:
         return len(self.children) > 0
