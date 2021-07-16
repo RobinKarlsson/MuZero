@@ -15,24 +15,27 @@ class Network(torch.nn.Module):
         super().__init__()
 
         self.config = config
-        self.representation = representation(config.channels)
-        self.dynamics = dynamics(config.channels)
-        self.prediction = prediction(config.action_space_size, config.board_size)
+        self.representation = representation(config)
+        self.dynamics = dynamics(config)
+        self.prediction = prediction(config)
         self.steps = 0
         
 
     def initial_inference(self, image):
         if type(image) is ndarray:
-            image = torch.from_numpy(image)
+            image = npToTensor(image)
+
+            if image.ndim != 4:
+                image = image.unsqueeze(0)
             
         # representation + prediction function
         hidden_state = self.representation(image)
         policy, value = self.prediction(hidden_state)
-        return hidden_state, policy, torch.mean(value).item()
+        return hidden_state, policy, value
     
     def recurrent_inference(self, hidden_state, action):
         # dynamics + prediction function
-        action_representation = torch.from_numpy(action.representation())
+        action_representation = torch.from_numpy(action.representation(self.config))
         
         if hidden_state.ndim == 3:
             hidden_state = hidden_state.unsqueeze(0)
@@ -41,9 +44,24 @@ class Network(torch.nn.Module):
 
         hidden_state = self.dynamics(hidden_state, action_representation)
         policy, value = self.prediction(hidden_state)
-        return hidden_state, policy, torch.mean(value).item()
+        return hidden_state, policy, value
     
     def training_steps(self) -> int:
         # How many steps / batches the network has been trained for.
         return self.steps
 
+def getOptimizer(config, network):
+    return torch.optim.SGD(network.parameters(), lr = config.lr_init,
+                           weight_decay = config.weight_decay, momentum = config.momentum)
+
+def npToTensor(arr: ndarray):
+    return torch.from_numpy(arr)
+    
+def torchSum(tensor: torch.Tensor):
+    return torch.sum(tensor)
+
+def torchMean(tensor: torch.Tensor):
+    return torch.mean(tensor)
+
+def torchLog(tensor: torch.Tensor):
+    return torch.log(tensor)

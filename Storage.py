@@ -10,7 +10,7 @@ class SharedStorage(object):
         if self._networks:
             return self._networks[max(self._networks.keys())]
         else:
-            return make_uniform_network()
+            return Network()
 
     def save_network(self, step: int, network: Network):
         self._networks[step] = network

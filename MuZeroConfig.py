@@ -6,19 +6,19 @@ def visit_softmax_temperature(moves):
 class MuZeroConfig(object):
 
     def __init__(self,
-                 action_space_size: int = 60,
-                 max_moves: int = 60,
-                 board_size: int = 64,
+                 max_moves: int = 8*8-4,
+                 board_rows: int = 8,
+                 board_columns: int = 8,
                  discount: float = 1.,
                  dirichlet_alpha: float = 3e-2,
-                 num_simulations: int = 2,
+                 num_simulations: int = 5,
                  batch_size: int = 512,
                  td_steps: int = 60,
                  lr_init: float = 1e-2,
                  lr_decay_steps: float = 4e5,
                  visit_softmax_temperature_fn = visit_softmax_temperature,
                  window_size: int = 512,
-                 training_steps: int = 1e5,
+                 training_steps: int = 2e2,
                  checkpoint_interval: int = 1e3,
                  pb_c_base: float = 19652,
                  pb_c_init: float = 1.25,
@@ -32,11 +32,13 @@ class MuZeroConfig(object):
                  boundary_max: int = 1):
         
         ### Self-Play
-        self.action_space_size = action_space_size
-
         self.visit_softmax_temperature_fn = visit_softmax_temperature_fn
+
+        self.board_rows = board_rows
+        self.board_columns = board_columns
+        self.action_space_size = board_rows * board_columns - 1
         self.max_moves = max_moves
-        self.board_size = board_size
+        self.board_size = board_rows * board_columns
         self.num_simulations = num_simulations
         self.discount = discount
 
@@ -52,7 +54,7 @@ class MuZeroConfig(object):
         self.pb_c_init = pb_c_init
 
         ### Training
-        self.training_steps = training_steps
+        self.training_steps = int(training_steps)
         self.checkpoint_interval = checkpoint_interval
         self.window_size = window_size
         self.batch_size = batch_size

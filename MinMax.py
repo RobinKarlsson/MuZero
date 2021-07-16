@@ -10,5 +10,5 @@ class MinMax(object):
         self.maximum = x if x > self.maximum else self.maximum
 
     def normalize(self, x):
-        return (x - self.minimum) / (self.maximum - self.minimum)
+        return (x - self.minimum) / (self.maximum - self.minimum) if self.maximum > self.minimum else x
         
