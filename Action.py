@@ -1,5 +1,6 @@
 from numpy import zeros, bool
-from copy import deepcopy
+#from copy import deepcopy
+from pickle import loads, dumps
 
 from typing import List
 from Player import Player
@@ -13,10 +14,10 @@ class Action(object):
     
     self.coordinates = coordinates
 
-  def representation(self, config: MuZeroConfig = MuZeroConfig()):
-    representation = zeros((2, config.board_rows, config.board_columns), dtype = bool)
+  def representation(self, gridsize: int):
+    representation = zeros((2, gridsize, gridsize), dtype = bool)
 
-    representation[1 if self.player.player == -1 else 0, self.coordinates] = 1
+    representation[0 if self.player.player == -1 else 1, self.coordinates] = 1
     return representation
 
   def __hash__(self):
@@ -35,7 +36,8 @@ class ActionHistory(object):
     self.action_space_size = action_space_size
 
   def clone(self):
-    return ActionHistory(deepcopy(self.history), self.action_space_size)
+    #return ActionHistory(deepcopy(self.history), self.action_space_size)
+    return ActionHistory(loads(dumps(self.history)), self.action_space_size)
 
   def add_action(self, action: Action):
     self.history.append(action)
@@ -45,3 +47,22 @@ class ActionHistory(object):
 
   def to_play(self) -> Player:
     return Player()
+
+def _test():
+  a1 = Action(1, 1, [1,1])
+  a2 = Action(2, 2, [2,2])
+  a3 = Action(3, 3, [3,3])
+  h = ActionHistory([a1])
+
+  assert len(h.history) == 1
+  h.add_action(a1)
+  assert len(h.history) == 2
+
+  h_new = h.clone()
+  assert len(h_new.history) == 2
+  h_new.add_action(a3)
+  assert len(h_new.history) == len(h.history) + 1
+  assert h.history[0] == h_new.history[0]
+
+if __name__ == '__main__':
+  _test()

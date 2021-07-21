@@ -4,6 +4,11 @@ from string import ascii_lowercase
 from re import match
 from typing import List
 
+from ctypes import CDLL
+from os.path import abspath
+
+
+
 class Othello(object):
     def __init__(self, grid_size: int = 8):
         if(grid_size % 2 != 0 or grid_size < 4):

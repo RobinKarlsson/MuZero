@@ -6,12 +6,13 @@ def visit_softmax_temperature(moves):
 class MuZeroConfig(object):
 
     def __init__(self,
-                 max_moves: int = 8*8-4,
-                 board_rows: int = 8,
-                 board_columns: int = 8,
+                 max_moves: int = 8**2-4,
+                 board_gridsize: int = 8,
+                 action_space_size: int = 8**2,
                  discount: float = 1.,
                  dirichlet_alpha: float = 3e-2,
-                 num_simulations: int = 5,
+                 consider_backward_states: int = 4,
+                 num_simulations: int = 50,
                  batch_size: int = 512,
                  td_steps: int = 60,
                  lr_init: float = 1e-2,
@@ -19,7 +20,7 @@ class MuZeroConfig(object):
                  visit_softmax_temperature_fn = visit_softmax_temperature,
                  window_size: int = 512,
                  training_steps: int = 2e2,
-                 checkpoint_interval: int = 1e3,
+                 checkpoint_interval: int = 1,
                  pb_c_base: float = 19652,
                  pb_c_init: float = 1.25,
                  root_exploration_fraction: float = 0.25,
@@ -34,13 +35,13 @@ class MuZeroConfig(object):
         ### Self-Play
         self.visit_softmax_temperature_fn = visit_softmax_temperature_fn
 
-        self.board_rows = board_rows
-        self.board_columns = board_columns
-        self.action_space_size = board_rows * board_columns - 1
+        self.board_gridsize = board_gridsize
+        self.action_space_size = action_space_size
         self.max_moves = max_moves
-        self.board_size = board_rows * board_columns
+        self.board_size = board_gridsize * board_gridsize
         self.num_simulations = num_simulations
         self.discount = discount
+        self.consider_backward_states = consider_backward_states * 2
 
         self.boundary_min = boundary_min
         self.boundary_max = boundary_max

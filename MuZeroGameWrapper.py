@@ -2,6 +2,8 @@
 
 from typing import List
 from numpy import zeros, stack, array, bool, float32
+from string import ascii_lowercase
+from re import match
 
 from MuZeroConfig import MuZeroConfig
 from Action import Action, ActionHistory
@@ -9,7 +11,7 @@ from Player import Player
 from Node import Node
 
 class MuZeroGameWrapper(object):
-    def __init__(self, game, action_history: ActionHistory = ActionHistory(), config: MuZeroConfig = MuZeroConfig()):
+    def __init__(self, game, config: MuZeroConfig, action_history: ActionHistory = ActionHistory()):
         self.game_object = game
         self.game = game()
         self.config = config
@@ -26,15 +28,38 @@ class MuZeroGameWrapper(object):
     def currentPlayer(self):
         return Player(self.game.current_player)
 
+    def humanInput(self, s: str, player: Player):
+        #map input string to x,y coordinates
+        pattern = r'([a-{}])([0-9]+)(F?)'.format(ascii_lowercase[self.game.grid_size - 1])
+        validinput = match(pattern, s.strip())
+
+        if(validinput):
+            y = int(validinput.group(2)) - 1
+            x = ascii_lowercase.index(validinput.group(1))
+
+            if(x < 0 or y < 0 or x > self.game.grid_size or y > self.game.grid_size):
+                return False
+
+        if(self.game.legalMove([x, y], self.game.current_player)):
+            action = Action(self.moves, player, [x, y])
+            self.performAction(action)
+            return True
+        return False
+
     def performAction(self, action: Action):
+        moving_player = self.game.current_player
         self.action_history.add_action(action)
         self.game.makeMove(action.coordinates, action.player.player)
 
+        #action rewards:
+        #   -1 - other player won
+        #   0 - game not over or draw
+        #   1 - moving player won
         reward = 0
         if(self.game.winner != None):
-            reward = 1 if self.game.current_player == self.game.winner else -1
+            reward = 1 if moving_player == self.game.winner else -1
+
         self.rewards.append(reward)
-        
         self.state_history.append(self.getGameState())
         self.moves += 1
 
@@ -47,7 +72,7 @@ class MuZeroGameWrapper(object):
 
     def getImage(self, idx: int) -> array:
         #idx 0-6: 3 latest gamestates, idx 7: True for player 1, False for player -1
-        image = zeros((7, self.config.board_rows, self.config.board_columns), dtype = bool)
+        image = zeros((self.config.consider_backward_states + 1, self.config.board_gridsize, self.config.board_gridsize), dtype = bool)
 
         for i in range(idx + 1 if idx < 3 else 3):
             image[(2-i)*2: (3-i)*2] = self.state_history[idx-i]
@@ -77,6 +102,6 @@ class MuZeroGameWrapper(object):
             if(current_index < len(self.root_node_values)):
                 targets.append((value, self.rewards[current_index], self.subnode_visits[current_index]))
             else:
-                targets.append((0,0,[]))
+                targets.append((0, 0, None))
 
         return targets
