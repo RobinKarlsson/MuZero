@@ -37,7 +37,8 @@ class ActionHistory(object):
 
   def clone(self):
     #return ActionHistory(deepcopy(self.history), self.action_space_size)
-    return ActionHistory(loads(dumps(self.history)), self.action_space_size)
+    #return ActionHistory(loads(dumps(self.history)), self.action_space_size)
+    return ActionHistory(self.history, self.action_space_size)
 
   def add_action(self, action: Action):
     self.history.append(action)
@@ -51,8 +52,13 @@ class ActionHistory(object):
 def _test():
   a1 = Action(1, 1, [1,1])
   a2 = Action(2, 2, [2,2])
+  assert a1 != a2
   a3 = Action(3, 3, [3,3])
   h = ActionHistory([a1])
+
+  a_list = [a1,a2]
+  assert a3 not in a_list
+  assert a1 in a_list
 
   assert len(h.history) == 1
   h.add_action(a1)

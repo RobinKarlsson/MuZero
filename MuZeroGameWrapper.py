@@ -57,7 +57,12 @@ class MuZeroGameWrapper(object):
         #   1 - moving player won
         reward = 0
         if(self.game.winner != None):
-            reward = 1 if moving_player == self.game.winner else -1
+            if(moving_player == self.game.winner):
+                reward = 1
+            elif(self.game.winner == 0):
+                pass
+            else:
+                reward = -1
 
         self.rewards.append(reward)
         self.state_history.append(self.getGameState())
@@ -86,8 +91,20 @@ class MuZeroGameWrapper(object):
 
         self.root_node_values.append(node.value())
 
-        for action, subnode in node.children:
-            self.subnode_visits.append(subnode.visit_count/sum_visits)
+        actions = [Action(idx, node.to_play, divmod(idx, self.config.board_gridsize)) for idx in range(self.config.action_space_size)]
+        child_actions = [c[0] for c in node.children]
+        stats = []
+
+        for action in actions:
+            if(action in child_actions):
+                for child_action, subnode in node.children:
+                    if(child_action == action):
+                        stats.append(subnode.visit_count/sum_visits)
+                        break
+            else:
+                stats.append(0)
+
+        self.subnode_visits.append(stats)
 
     def getTargets(self, state_index: int, num_unroll_steps: int, td_steps: int, to_play: Player):
         targets = []
@@ -96,12 +113,12 @@ class MuZeroGameWrapper(object):
             bootstrap_index = current_index + td_steps
 
             value = self.root_node_values[bootstrap_index] if bootstrap_index < len(self.root_node_values) else 0
-            for reward in self.rewards[current_index: bootstrap_index]:
-                value += reward
+            for i, reward in enumerate(self.rewards[current_index: bootstrap_index]):
+                value += reward * self.config.discount ** i
 
             if(current_index < len(self.root_node_values)):
                 targets.append((value, self.rewards[current_index], self.subnode_visits[current_index]))
             else:
-                targets.append((0, 0, None))
+                targets.append((0, 0, []))
 
         return targets

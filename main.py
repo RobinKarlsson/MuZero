@@ -4,6 +4,7 @@ import numpy as np
 from psutil import virtual_memory, cpu_percent
 from datetime import datetime
 from os import listdir
+from pathlib import Path as pathlibPath
 from numpy.random import choice
 from torch import no_grad, from_numpy
 from torch import sum as torchsum
@@ -23,24 +24,28 @@ from MinMax import MinMax
 from Storage import SharedStorage
 from ReplayBuffer import ReplayBuffer
 
+pathlibPath('Data').mkdir(parents=True, exist_ok=True)
+pathlibPath('Games').mkdir(parents=True, exist_ok=True)
+pathlibPath('CLibrary').mkdir(parents=True, exist_ok=True)
+
 def currentTime():
     ram_usage = virtual_memory().percent
     cpu_usage = cpu_percent()
     return f'{datetime.now().strftime("%H:%M:%S")} ram/cpu usage: {ram_usage}/{cpu_usage}:'
 
-def muzero(config: MuZeroConfig, game, num_self_play: int = 50, storage: SharedStorage = SharedStorage()):
+def muzero(config: MuZeroConfig, game, num_self_play: int = 10, storage: SharedStorage = SharedStorage()):
     replay_buffer = ReplayBuffer(config)
     network = storage.latest_network(config)
 
     optimizer = getOptimizer(config, network)
 
-    #update weights
     for epoch in range(network.steps+1, config.training_steps+1):
         if(epoch % config.checkpoint_interval == 0 and epoch > 1):
             print(f'{currentTime()} saving network as Data/{epoch-1}')
             storage.save_network(epoch-1, network)
             saveNetwork(str(epoch-1), network)
 
+        #populate replay_buffer with selfplay games
         selfPlay(config, storage, replay_buffer, game, num_self_play)
         print(f'{currentTime()} training step {epoch} of {config.training_steps}')
 
@@ -53,37 +58,35 @@ def muzero(config: MuZeroConfig, game, num_self_play: int = 50, storage: SharedS
             hidden_state, policy, value = network.initial_inference(image)
 
             num_actions = len(actions)
-            pred = [[1., value, 0, policy]]
+            pred = [[1., value, policy]]
 
-            #recurrent inference from action and previous hidden state
+            #step through actions
             for action in actions:
+                #recurrent inference from action and previous hidden state
                 hidden_state, policy, value = network.recurrent_inference(hidden_state, action, config.board_gridsize)
-                pred.append([1./num_actions, value, 0, policy])
+                pred.append([1./num_actions, value, policy])
                 
             #policy & value loss
-            for i in range(min(len(pred), len(targets))):
-                prediction_value = pred[i][1]
-                prediction_policy = pred[i][3]
-                target_value = targets[i][0]
-                target_policy = targets[i][2]
+            for p, t in zip(pred, targets):
+                _, prediction_value, prediction_policy = p
+                target_value, _, target_policy = t
 
-                if(target_policy == None):
+                if(len(target_policy) == 0):
                     continue
 
                 policy_loss += torchmean(torchsum(-from_numpy(np.array(target_policy)) * torchlog(prediction_policy)))
-                value_loss += torchmean(torchsum((from_numpy(np.array([target_value])) - prediction_value) ** 2))
+                value_loss += torchmean(torchsum((from_numpy(np.array(target_value)) - prediction_value) ** 2))
 
-        #set gradients to zero in preparation of backpropragation
+        #set gradients to zero
         optimizer.zero_grad()
-
-        #gradient of loss tensor with respect to leaves
+        
+        #compute gradient of loss tensor with respect to leaves
         (policy_loss + value_loss).backward()
 
         #step based on gradients
         optimizer.step()
             
         network.steps += 1
-
         print(f'{currentTime()} policy_loss: {policy_loss}, value_loss: {value_loss}')
     storage.save_network(i, network)
     saveNetwork(str(config.training_steps), network)
@@ -101,9 +104,11 @@ def selfPlay(config: MuZeroConfig, storage: SharedStorage, replay_buffer: Replay
         replay_buffer.save_game(wrapper)
 
 def MCTS(config: MuZeroConfig, root_node: Node, game_wrapper: MuZeroGameWrapper, network: Network, minmax: MinMax):
+    game_wrapper_history_len = len(game_wrapper.action_history.history)
     for epoch in range(config.num_simulations):
         #print(f'{currentTime()} epoch: {epoch}')
         node = root_node
+        game_wrapper.action_history.history = game_wrapper.action_history.history[:game_wrapper_history_len]
         history = game_wrapper.action_history.clone()
         path = [root_node]
         
@@ -212,10 +217,21 @@ def randomvsMuzero(player_random: Player, player_ai: Player, network: Network, c
         if(wrapper.currentPlayer() == player_random):
             action = Action(wrapper.moves, player_random,
                             legal_moves[choice(len(legal_moves))])
-            wrapper.performAction(action)
         else:
             action = getMuZeroAction(player_ai, network, config, wrapper)
-            wrapper.performAction(action)
+        wrapper.performAction(action)
+    return wrapper.game.winner
+
+def randomvsMuzero(player_1: Player, player_2: Player, network_1: Network, network_2: Network, config: MuZeroConfig, game = Othello):
+    wrapper = MuZeroGameWrapper(game, config)
+
+    while not wrapper.gameOver():
+        legal_moves = wrapper.legalMoves(player_random)
+        if(wrapper.currentPlayer() == player_1):
+            action = getMuZeroAction(player_1, network_1, config, wrapper)
+        else:
+            action = getMuZeroAction(player_2, network_2, config, wrapper)
+        wrapper.performAction(action)
     return wrapper.game.winner
 
 def humanVsMuZero(player_colour: int, network: Network, config: MuZeroConfig, game = Othello):
@@ -244,9 +260,13 @@ if __name__ == '__main__':
         option = input('Options:\n 1 - play without MuZero\n 2 - Play agains MuZero\n 3 - Train MuZero\n')
 
     option = int(option)
-    config = MuZeroConfig()
     storage = SharedStorage()
-    game = Othello
+
+    #config = MuZeroConfig()
+    #game = Othello
+
+    game = NInRow
+    config = MuZeroConfig(max_moves = 3**2, action_space_size = 3**2, board_gridsize = 3, td_steps = 3*3)
 
     if option == 1:
         game = game()
@@ -273,14 +293,13 @@ if __name__ == '__main__':
 
     elif option == 3:
         #load latest saved network
-
         steps, network = loadNetwork(config)
 
         if(type(steps) == int):
             print(f'{currentTime()} loading network Data/{steps}')
             storage.save_network(steps, network)
 
-        muzero(config, game, storage = storage, num_self_play = 5)
+        muzero(config, game, storage = storage)
 
     elif option == 4:
         networks = listdir('Data/')

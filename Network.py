@@ -47,8 +47,11 @@ class Network(torch.nn.Module):
         return hidden_state, policy, value
 
 def getOptimizer(config, network):
-    return torch.optim.SGD(network.parameters(), lr = config.lr_init,
-                           weight_decay = config.weight_decay, momentum = config.momentum)
+    #stochastic gradient descent
+    optimizer = torch.optim.SGD(network.parameters(), lr = config.lr_init,
+                              weight_decay = config.weight_decay, momentum = config.momentum)
+    #optimizer = torch.optim.Adam(network.parameters(), lr = config.lr_init)
+    return optimizer
 
 def saveNetwork(file: str, network: Network):
     if not 'Data/' in file:
