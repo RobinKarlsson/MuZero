@@ -63,7 +63,7 @@ class MuZeroGameWrapper(object):
                 pass
             else:
                 reward = -1
-
+                
         self.rewards.append(reward)
         self.state_history.append(self.getGameState())
         self.moves += 1
@@ -112,7 +112,7 @@ class MuZeroGameWrapper(object):
         for current_index in range(state_index, state_index + num_unroll_steps + 1):
             bootstrap_index = current_index + td_steps
 
-            value = self.root_node_values[bootstrap_index] if bootstrap_index < len(self.root_node_values) else 0
+            value = self.root_node_values[bootstrap_index] * self.config.discount ** td_steps if bootstrap_index < len(self.root_node_values) else 0
             for i, reward in enumerate(self.rewards[current_index: bootstrap_index]):
                 value += reward * self.config.discount ** i
 

@@ -13,6 +13,9 @@ class MuZeroConfig(object):
                  dirichlet_alpha: float = 0.25,
                  consider_backward_states: int = 4,
                  num_simulations: int = 50,
+                 num_threads: int = 1,
+                 num_selfplay: int = None,
+                 refresh_replaybuffer: int = 10,
                  batch_size: int = 512,
                  td_steps: int = 8*8-4,
                  lr_init: float = 1e-3,
@@ -30,9 +33,14 @@ class MuZeroConfig(object):
                  momentum: float = 0.9,
                  channels: int = 128,
                  boundary_min: int = -1,
-                 boundary_max: int = 1):
+                 boundary_max: int = 1,
+                 torchlog_eps: float = 1e-7,
+                 torch_device: str = 'cpu'):
         
         ### Self-Play
+        self.num_threads = num_threads
+        self.num_selfplay = num_selfplay if num_selfplay else window_size
+        self.refresh_replaybuffer = refresh_replaybuffer
         self.visit_softmax_temperature_fn = visit_softmax_temperature_fn
 
         self.board_gridsize = board_gridsize
@@ -65,6 +73,9 @@ class MuZeroConfig(object):
 
         self.weight_decay = weight_decay
         self.momentum = momentum
+
+        self.torchlog_eps = torchlog_eps
+        self.torch_device = torch_device
 
         # Exponential learning rate schedule
         self.lr_init = lr_init

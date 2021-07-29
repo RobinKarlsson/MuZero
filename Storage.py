@@ -11,8 +11,7 @@ class SharedStorage(object):
         if self._networks:
             return self._networks[max(self._networks.keys())]
         else:
-            return Network(config.board_gridsize, config.board_size, config.channels,
-                           config.consider_backward_states, config.action_space_size)
+            return Network(config).to(config.torch_device)
 
     def save_network(self, step: int, network: Network):
         self._networks[step] = network
