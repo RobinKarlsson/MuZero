@@ -23,7 +23,7 @@ class Node(object):
         p_sum = policy.sum().item()
 
         for action, p in moves:
-            self.children.append([action, Node(p / p_sum, Player(self.to_play.player), hidden_state)])
+            self.children.append([action, Node(p / p_sum, Player(-self.to_play.player), hidden_state)])
 
     def addNoise(self, config: MuZeroConfig):
         noise = dirichlet([config.root_dirichlet_alpha] * len(self.children))

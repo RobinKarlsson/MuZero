@@ -47,8 +47,8 @@ class Network(torch.nn.Module):
         return hidden_state, policy, value
 
 def getOptimizer(config, network):
-    #optimizer = torch.optim.SGD(network.parameters(), lr = config.lr_init, weight_decay = config.weight_decay, momentum = config.momentum)
-    optimizer = torch.optim.ASGD(network.parameters(), lr = config.lr_init, weight_decay = config.weight_decay)
+    optimizer = torch.optim.SGD(network.parameters(), lr = config.lr_init, weight_decay = config.weight_decay, momentum = config.momentum)
+    #optimizer = torch.optim.ASGD(network.parameters(), lr = config.lr_init, weight_decay = config.weight_decay)
     #optimizer = torch.optim.Adam(network.parameters(), lr = config.lr_init)
     #optimizer = torch.optim.Adagrad(network.parameters(), lr = config.lr_init, weight_decay = config.weight_decay)
     return optimizer
