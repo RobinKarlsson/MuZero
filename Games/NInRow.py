@@ -14,15 +14,21 @@ class NInRow(object):
 
     def makeMove(self, coordinates: List[int], player: int = None) -> int:
         player = self.current_player if not player else player
-        reward = None
+        reward = 0
 
         if(self.winner == None and self.legalMove(coordinates)):
-            greatest_row = self.greatestRow(coordinates, player)
             #place players stone
             self.board[coordinates[1]][coordinates[0]] = player
 
-            #winning row
-            if(greatest_row >= self.n):
+            greatest_path = 0
+            for x in range(self.grid_size):
+                for y in range(self.grid_size):
+                    if (self.board[y][x] == player):
+                        path_len = self.greatestPath([x,y], player)
+                        greatest_path = path_len if path_len > greatest_path else greatest_path
+
+            #winning move
+            if(greatest_path >= self.n):
                 self.winner = player
                 reward = player
 
@@ -31,11 +37,12 @@ class NInRow(object):
                 #switch active player
                 self.current_player = -player
 
-            #neither player can move -> draw
+            #new player can move -> draw
             else:
                 self.winner = 0
                 self.current_player = 0
                 reward = 0
+
         return reward
 
     def constructBoard(self) -> List[List[int]]:
@@ -59,7 +66,7 @@ class NInRow(object):
     def legalMove(self, coordinates: List[int], player = None) -> bool:
         return False if(self.board[coordinates[1]][coordinates[0]] != 0) else True
 
-    def greatestRow(self, coordinates: List[int], player: int = None) -> int:
+    def greatestPath(self, coordinates: List[int], player: int = None) -> int:
         neighbours, captured_squares = [], []
         greatest_path = 0
         player = self.current_player if not player else player
@@ -67,7 +74,7 @@ class NInRow(object):
         #find occupied squares neighbouring coordinates
         for i in range(max(0, coordinates[0]-1), min(coordinates[0]+2, self.grid_size)):
             for j in range(max(0, coordinates[1]-1), min(coordinates[1]+2, self.grid_size)):
-                if self.board[j][i] != 0:
+                if(self.board[j][i] != 0):
                     neighbours.append([i,j])
 
         #find diagonal, horizontal and vertical capture paths
@@ -79,6 +86,8 @@ class NInRow(object):
             #direction of neighbour from coordinates
             delta_x = neighbour[0] - coordinates[0]
             delta_y = neighbour[1] - coordinates[1]
+            if(delta_x == 0 and delta_y == 0):
+                continue
 
             new_x, new_y = neighbour[0], neighbour[1]
 
@@ -86,6 +95,7 @@ class NInRow(object):
             path = [coordinates]
             
             while 0 <= new_x < self.grid_size and 0 <= new_y < self.grid_size:
+
                 #path ended with an empty square
                 if (self.board[new_y][new_x] == 0):
                     break
@@ -95,12 +105,11 @@ class NInRow(object):
                     #append path coordinas to captured_squares
                     captured_squares += path
                     break
-
                 path.append([new_x, new_y])
                 
                 new_x += delta_x
                 new_y += delta_y
-                
+            
             if(len(path) > greatest_path):
                 greatest_path = len(path)
 
@@ -130,15 +139,25 @@ class NInRow(object):
 def _test():
     game = NInRow()
     game.makeMove([1,1])
-    print(game)
     game.makeMove([1,0])
-    print(game)
     game.makeMove([0,1])
-    print(game)
     game.makeMove([0,0])
-    print(game)
     game.makeMove([2,1])
-    print(game)
+    assert game.winner == 1
+
+    game = NInRow()
+    game.makeMove([1,0])
+    game.makeMove([1,1])
+    game.makeMove([0,1])
+    game.makeMove([0,0])
+    game.makeMove([2,1])
+    game.makeMove([2,2])
+    assert game.winner == -1
+
+    game = NInRow()
+    for coordinates in ([2, 2], [0, 0], [0, 2], [1, 0], [0, 1], [1, 2], [2, 0], [1, 1]):
+        game.makeMove(coordinates)
+    assert game.winner == -1
 
 if __name__ == '__main__':
     _test()

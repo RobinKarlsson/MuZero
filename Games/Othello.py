@@ -66,12 +66,10 @@ class Othello(object):
     #in int x,y - coordinates to place a stone at
     def makeMove(self, coordinates: List[int], player: int = None) -> int:
         player = self.current_player if not player else player
-        reward = None
             
         if(self.winner == None):
             #squares taken with move
             paths = self.getCapturePaths(coordinates)
-            reward = len(paths)
 
             #place players stone at captures squares
             self.board[coordinates[1]][coordinates[0]] = player
@@ -83,11 +81,7 @@ class Othello(object):
                 #switch active player
                 self.current_player = -player
 
-            #new player couldnt move but current can move again
-            elif(self.canMove(player)):
-                pass
-
-            #neither player can move -> gameover
+            #new player cant move -> gameover
             else:
                 #determine victor
                 score = self.getScore()
@@ -100,6 +94,16 @@ class Othello(object):
                     self.winner = 0
 
                 self.current_player = 0
+
+        reward = 0
+        if(self.winner):
+            if(self.winner == player):
+                reward = 1
+            elif(self.winner == 0):
+                pass
+            else:
+                reward = -1
+
         return reward
             
     #returns list of legal moves available for player
@@ -239,20 +243,6 @@ def _test():
     game.board[0][2] = -1
     game.play('f4')
     assert game.winner == 0
-
-    game = Othello(8)
-    game.board[4][4] = 0
-    game.board[4][3] = 0
-    game.board[3][3] = 1
-
-    game.board[0][0] = 1
-    game.board[0][1] = -1
-
-    player = game.current_player
-    game.play('f4')
-    assert game.current_player == player
-    game.play('c1')
-    assert game.current_player == 0
 
     game = Othello(8)
     game.board[4][4] = 0

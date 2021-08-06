@@ -1,7 +1,8 @@
 #python 3.8
 
 from typing import List
-from numpy import zeros, stack, array, bool, float32
+from numpy import zeros, stack, array, float32
+from numpy import bool as np_bool
 from string import ascii_lowercase
 from re import match
 
@@ -11,24 +12,30 @@ from Player import Player
 from Node import Node
 
 class MuZeroGameWrapper(object):
-    def __init__(self, game, config: MuZeroConfig, action_history: ActionHistory = ActionHistory()):
+    def __init__(self, game, config: MuZeroConfig, action_history: ActionHistory = None):
         self.game_object = game
         self.game = game()
         self.config = config
-        self.action_history = action_history
+        self.action_history = action_history if action_history else ActionHistory()
         self.state_history = [self.getGameState()]
         self.moves = 0
         self.rewards = []
         self.root_node_values = []
         self.subnode_visits = []
 
-    def gameOver(self):
+    #true if gameover, otherwise false
+    def gameOver(self) -> bool:
         return False if self.game.winner == None else True
 
-    def currentPlayer(self):
+    #get player object of current player
+    def currentPlayer(self) -> Player:
         return Player(self.game.current_player)
 
-    def humanInput(self, s: str, player: Player):
+    #Transorm a string input into coorinates and perform indicated move
+    #in:    string representation of move (for example a1 for coordinates [0,0])
+    #       player object performing move
+    #out:   true if move was performed, else false
+    def humanInput(self, s: str, player: Player) -> bool:
         #map input string to x,y coordinates
         pattern = r'([a-{}])([0-9]+)(F?)'.format(ascii_lowercase[self.game.grid_size - 1])
         validinput = match(pattern, s.strip())
@@ -39,52 +46,53 @@ class MuZeroGameWrapper(object):
 
             if(x < 0 or y < 0 or x > self.game.grid_size or y > self.game.grid_size):
                 return False
+        else:
+            return False
 
+        #execute move iff legal
         if(self.game.legalMove([x, y], self.game.current_player)):
             action = Action(self.moves, player, [x, y])
             self.performAction(action)
             return True
         return False
 
-    def performAction(self, action: Action):
-        moving_player = self.game.current_player
+    #Perform an action agains the game environment
+    #in:    Action object
+    #out:   Player object that moved
+    def performAction(self, action: Action) -> Player:
         self.action_history.add_action(action)
-        self.game.makeMove(action.coordinates, action.player.player)
 
-        #action rewards:
-        #   -1 - other player won
-        #   0 - game not over or draw
-        #   1 - moving player won
-        reward = 0
-        if(self.game.winner != None):
-            if(moving_player == self.game.winner):
-                reward = 1
-            elif(self.game.winner == 0):
-                pass
-            else:
-                reward = -1
-                
+        #reward from performed action. In games like Othello this is 0 until a player has won
+        reward = self.game.makeMove(action.coordinates, action.player.player)
+
         self.rewards.append(reward)
         self.state_history.append(self.getGameState())
         self.moves += 1
+        return action.player
 
+    #return list of coordinates for legal moves
     def legalMoves(self, player: Player) -> List[int]:
         return self.game.validMoves(player.player)
 
+    #representation of current gamestate
     def getGameState(self) -> array:
         board = array([array(x) for x in self.game.board])
-        return stack((board == -1, board == 1), axis = 0).astype(bool)
+        return stack((board == -1, board == 1), axis = 0).astype(np_bool)
 
+    #image of game
     def getImage(self, idx: int) -> array:
-        #idx 0-6: 3 latest gamestates, idx 7: True for player 1, False for player -1
-        image = zeros((self.config.consider_backward_states + 1, self.config.board_gridsize, self.config.board_gridsize), dtype = bool)
+        image = zeros((self.config.consider_backward_states * 2 + 1, self.config.board_gridsize, self.config.board_gridsize), np_bool)
 
-        for i in range(idx + 1 if idx < 3 else 3):
-            image[(2-i)*2: (3-i)*2] = self.state_history[idx-i]
+        for i in range(min(idx, self.config.consider_backward_states)):
+            image[(self.config.consider_backward_states - i - 1) * 2:
+                  (self.config.consider_backward_states - i) * 2
+                  ] = self.state_history[idx - i]
 
-        image[-1] = 1 if self.game.current_player == -1 else 0
+        image[-1] = 0 if self.game.current_player == -1 else 1
+
         return image.astype(float32)
 
+    #save search statistics
     def saveStats(self, node: Node):
         visit_counts = [(subnode.visit_count, action) for action, subnode in node.children]
         sum_visits = sum([v[0] for v in visit_counts])
@@ -122,3 +130,18 @@ class MuZeroGameWrapper(object):
                 targets.append((0, 0, []))
 
         return targets
+
+
+def _test():
+    from Games.NInRow import NInRow
+    config = MuZeroConfig(max_moves = 3**2, window_size = 30, num_simulations = 30, action_space_size = 3**2, board_gridsize = 3, td_steps = 3*3)
+
+    w1 = MuZeroGameWrapper(NInRow, config)
+
+    a1 = Action(0, w1.currentPlayer(), [1,1])
+    w1.performAction(a1)
+    assert w1.action_history.history[-1].coordinates == [1,1]
+
+
+if __name__ == '__main__':
+    _test()

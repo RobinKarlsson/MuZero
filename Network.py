@@ -16,9 +16,20 @@ class Network(torch.nn.Module):
         
         super().__init__()
 
-        self.representation = representation(config.board_gridsize, config.channels, config.consider_backward_states + 1).to(config.torch_device)
-        self.dynamics = dynamics(config.board_gridsize, config.channels).to(config.torch_device)
-        self.prediction = prediction(config.board_gridsize, config.board_size, config.action_space_size).to(config.torch_device)
+        self.representation = representation(config.board_gridsize,
+                                             config.channels,
+                                             config.consider_backward_states * 2 + 1
+                                             ).to(config.torch_device)
+
+        self.dynamics = dynamics(config.board_gridsize,
+                                 config.channels
+                                 ).to(config.torch_device)
+
+        self.prediction = prediction(config.board_gridsize,
+                                     config.board_size,
+                                     config.action_space_size
+                                     ).to(config.torch_device)
+
         self.steps = 0
 
     def initial_inference(self, config: MuZeroConfig, image):
@@ -48,19 +59,19 @@ class Network(torch.nn.Module):
 
 def getOptimizer(config, network):
     optimizer = torch.optim.SGD(network.parameters(), lr = config.lr_init, weight_decay = config.weight_decay, momentum = config.momentum)
-    #optimizer = torch.optim.ASGD(network.parameters(), lr = config.lr_init, weight_decay = config.weight_decay)
     #optimizer = torch.optim.Adam(network.parameters(), lr = config.lr_init)
-    #optimizer = torch.optim.Adagrad(network.parameters(), lr = config.lr_init, weight_decay = config.weight_decay)
     return optimizer
 
-def saveNetwork(file: str, network: Network):
-    if not 'Data/' in file:
-        file = 'Data/' + file
+def saveNetwork(file_network: str, network: Network, optimizer: torch.optim):
+    if not 'Data/' in file_network:
+        file_network = 'Data/' + file_network
 
-    torch.save(network, file)
+    torch.save(network, file_network)
+    torch.save(optimizer, 'Data/optimizer')
 
-def loadNetwork(config: MuZeroConfig, file: str = None):
-    if(file == None):
+def loadNetwork(config: MuZeroConfig, file_network: str = None, file_optimizer: str = None):
+    network = None
+    if(file_network == None):
         greatest_step = 0
         for f in listdir('Data/'):
             try:
@@ -72,20 +83,30 @@ def loadNetwork(config: MuZeroConfig, file: str = None):
                 greatest_step = f
 
         if(greatest_step != 0):
-            file = str(greatest_step)
+            file_network = str(greatest_step)
         else:
-            return 0, Network(config).to(config.torch_device)
+            file_network = "0"
+            network = Network(config).to(config.torch_device)
     
-    if not 'Data/' in file:
-        file = 'Data/' + file
+    if not 'Data/' in file_network:
+        file_network = 'Data/' + file_network
 
-    network = torch.load(file)
+    if not network:
+        network = torch.load(file_network)
 
-    file = file.replace('Data/', '')
+    file_network = file_network.replace('Data/', '')
     try:
-        file = int(file)
+        file_network = int(file_network)
     except ValueError:
-        pass
+        file_network = 0
+
+    if(file_optimizer == None):
+        for f in listdir('Data/'):
+            if(f == 'optimizer'):
+                file_optimizer = f
+                break
+
+    optimizer = torch.load('Data/' + file_optimizer) if file_optimizer else getOptimizer(config, network)
     
-    return file, network.to(config.torch_device)
+    return file_network, network.to(config.torch_device), optimizer
 

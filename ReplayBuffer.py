@@ -14,7 +14,7 @@ class ReplayBuffer(object):
         self.config = config
 
     def save_game(self, wrapper: MuZeroGameWrapper):
-        if len(self.buffer) > self.window_size:
+        if len(self.buffer) >= self.window_size:
           self.buffer.pop(0)
         self.buffer.append(wrapper)
 
@@ -24,11 +24,12 @@ class ReplayBuffer(object):
         else:
             batch_size = self.batch_size
             
-        games = choice(self.buffer, batch_size, replace=False)
+        #games = choice(self.buffer, batch_size, replace=False)
+        games = [self.sample_game() for _ in range(batch_size)]
         game_pos = [(g, self.sample_position(g)) for g in games]
         
         return [(g.getImage(i),
-                 g.action_history.history[i:i + num_unroll_steps],
+                 g.action_history.history[i: i + num_unroll_steps],
                  g.getTargets(i, num_unroll_steps, td_steps, g.currentPlayer())) for (g, i) in game_pos]
 
     def sample_game(self):

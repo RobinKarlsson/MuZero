@@ -1,12 +1,12 @@
 #python 3.8
 
-from ctypes import CDLL, c_float
+from ctypes import CDLL, c_float, c_double
 from os.path import abspath
 
-so_file = "CLibrary/normalize.so"
+so_file = "c_functions.so"
 f = CDLL(abspath(so_file))
-f.normalize.argtypes = [c_float, c_float, c_float]
-f.normalize.restype = c_float
+f.normalize.argtypes = [c_double, c_float, c_float]
+f.normalize.restype = c_double
 
 class MinMax(object):
     def __init__(self, minimum: float, maximum: float):

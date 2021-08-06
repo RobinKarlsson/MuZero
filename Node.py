@@ -21,9 +21,13 @@ class Node(object):
     def expand(self, actions: List[Action], hidden_state, policy, value):
         moves = [[action, policy[0, action.index].item()] for action in actions]
         p_sum = policy.sum().item()
-
+        next_player = Player(-self.to_play.player)
+        
         for action, p in moves:
-            self.children.append([action, Node(p / p_sum, Player(-self.to_play.player), hidden_state)])
+            subnode = Node(p / p_sum, next_player, hidden_state)
+            if not subnode:
+                raise(policy)
+            self.children.append([action, subnode])
 
     def addNoise(self, config: MuZeroConfig):
         noise = dirichlet([config.root_dirichlet_alpha] * len(self.children))

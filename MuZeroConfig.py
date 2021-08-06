@@ -10,21 +10,21 @@ class MuZeroConfig(object):
                  board_gridsize: int = 8,
                  action_space_size: int = 8**2,
                  discount: float = 0.99,
-                 dirichlet_alpha: float = 0.25,
+                 dirichlet_alpha: float = 0.3,
                  consider_backward_states: int = 4,
-                 num_simulations: int = 50,
+                 num_simulations: int = 200,
                  num_threads: int = 1,
                  num_selfplay: int = None,
-                 refresh_replaybuffer: int = 10,
-                 batch_size: int = 512,
+                 refresh_replaybuffer: int = 5,
+                 batch_size: int = 500,
                  td_steps: int = 8*8-4,
-                 lr_init: float = 1e-3,
-                 lr_decay_rate: float = 0.1,
-                 lr_decay_steps: float = 4e5,
+                 lr_init: float = 5e-3,
+                 lr_decay_rate: float = 1,
+                 lr_decay_steps: float = 1e4,
                  visit_softmax_temperature_fn = visit_softmax_temperature,
-                 window_size: int = 512,
-                 training_steps: int = 1e5,
-                 checkpoint_interval: int = 10,
+                 window_size: int = 500,
+                 training_steps: int = 1e6,
+                 checkpoint_interval: int = 1e2,
                  pb_c_base: float = 19652,
                  pb_c_init: float = 1.25,
                  root_exploration_fraction: float = 0.25,
@@ -34,12 +34,11 @@ class MuZeroConfig(object):
                  channels: int = 128,
                  boundary_min: int = -1,
                  boundary_max: int = 1,
-                 torchlog_eps: float = 1e-7,
                  torch_device: str = 'cpu'):
         
         ### Self-Play
         self.num_threads = num_threads
-        self.num_selfplay = num_selfplay if num_selfplay else window_size
+        self.num_selfplay = num_selfplay if num_selfplay else int(window_size / 5)
         self.refresh_replaybuffer = refresh_replaybuffer
         self.visit_softmax_temperature_fn = visit_softmax_temperature_fn
 
@@ -49,7 +48,7 @@ class MuZeroConfig(object):
         self.board_size = board_gridsize * board_gridsize
         self.num_simulations = num_simulations
         self.discount = discount
-        self.consider_backward_states = consider_backward_states * 2
+        self.consider_backward_states = consider_backward_states
 
         self.boundary_min = boundary_min
         self.boundary_max = boundary_max
@@ -64,7 +63,7 @@ class MuZeroConfig(object):
 
         ### Training
         self.training_steps = int(training_steps)
-        self.checkpoint_interval = checkpoint_interval
+        self.checkpoint_interval = int(checkpoint_interval)
         self.window_size = window_size
         self.batch_size = batch_size
         self.num_unroll_steps = num_unroll_steps
@@ -74,7 +73,6 @@ class MuZeroConfig(object):
         self.weight_decay = weight_decay
         self.momentum = momentum
 
-        self.torchlog_eps = torchlog_eps
         self.torch_device = torch_device
 
         # Exponential learning rate schedule
