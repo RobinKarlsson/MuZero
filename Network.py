@@ -59,7 +59,6 @@ class Network(torch.nn.Module):
 
 def getOptimizer(config, network):
     optimizer = torch.optim.SGD(network.parameters(), lr = config.lr_init, weight_decay = config.weight_decay, momentum = config.momentum)
-    #optimizer = torch.optim.Adam(network.parameters(), lr = config.lr_init)
     return optimizer
 
 def saveNetwork(file_network: str, network: Network, optimizer: torch.optim):

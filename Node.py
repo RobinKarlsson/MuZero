@@ -25,8 +25,6 @@ class Node(object):
         
         for action, p in moves:
             subnode = Node(p / p_sum, next_player, hidden_state)
-            if not subnode:
-                raise(policy)
             self.children.append([action, subnode])
 
     def addNoise(self, config: MuZeroConfig):
