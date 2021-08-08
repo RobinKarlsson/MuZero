@@ -51,8 +51,6 @@ def muzero(config: MuZeroConfig, game, optimizer, storage: SharedStorage = Share
     replay_buffer = ReplayBuffer(config)
     selfplay_threads = []
 
-    original_window_size = config.window_size
-    original_num_selfplay = config.num_selfplay
     num_decimals = 3
 
     for _ in range(config.num_threads):
@@ -66,13 +64,7 @@ def muzero(config: MuZeroConfig, game, optimizer, storage: SharedStorage = Share
     for epoch in range(network.steps+1, config.training_steps+1):
         if((epoch - 1) % config.checkpoint_interval == 0 and epoch > 1):
             print(f'{currentTime()} saving network as Data/{epoch-1}')
-            storage.save_network(epoch-1, network)
             saveNetwork(str(epoch-1), network, optimizer)
-
-        if(epoch < 20):
-            config.window_size = 4
-        else:
-            config.window_size = original_window_size
 
         #populate replay_buffer with selfplay games
         #if((epoch - 1) % config.refresh_replaybuffer == 0 or len(replay_buffer.buffer) == 0):
@@ -124,8 +116,9 @@ def muzero(config: MuZeroConfig, game, optimizer, storage: SharedStorage = Share
 
         #step based on gradients
         optimizer.step()
-            
         network.steps += 1
+
+        storage.save_network(epoch-1, network)
         if((epoch) % 1 == 0):
             print(f'{currentTime()} epoch {epoch}/{config.training_steps}, buffer: {len(replay_buffer.buffer)}/{config.window_size}, p_loss: {round(policy_loss.item(), num_decimals)}, v_loss: {round(value_loss.item(), num_decimals)}')
         
