@@ -1,6 +1,4 @@
 from numpy import zeros, bool
-#from copy import deepcopy
-#from pickle import loads, dumps
 
 from typing import List
 from Player import Player
@@ -35,7 +33,6 @@ class ActionHistory(object):
     self.action_space_size = action_space_size
 
   def clone(self):
-    #return ActionHistory(loads(dumps(self.history)), self.action_space_size)
     return ActionHistory(self.history, self.action_space_size)
 
   def add_action(self, action: Action):

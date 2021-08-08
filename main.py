@@ -46,8 +46,9 @@ def currentTime():
     cpu_usage = cpu_percent()
     return f'{datetime.now().strftime("%H:%M:%S")} ram/cpu usage: {ram_usage}/{cpu_usage}:'
 
-def muzero(config: MuZeroConfig, game, optimizer, storage: SharedStorage = SharedStorage()):
-    network = storage.latest_network(config)
+def muzero(config: MuZeroConfig, game, optimizer, network: Network = None, storage: SharedStorage = SharedStorage()):
+    if not network:
+        network = storage.latest_network(config)
     replay_buffer = ReplayBuffer(config)
     selfplay_threads = []
 
@@ -246,7 +247,7 @@ def getMuZeroAction(player: Player, network: Network, config: MuZeroConfig, wrap
     actions = [a[1] for a in visit_counts]
 
     sum_visits = sum(visits)
-    if(len(wrapper.action_history.history) < 21):
+    if(len(wrapper.action_history.history) < config.softmax_threshold):
         #probability of each node being visited
         probabilities = [x / sum_visits for x in visits]
         #select action based on visit probabilities
@@ -320,8 +321,11 @@ if __name__ == '__main__':
     option = int(option)
     storage = SharedStorage()
 
-    config = MuZeroConfig(torch_device = torch_device)
-    game = Othello
+    #config = MuZeroConfig(torch_device = torch_device)
+    #game = Othello
+
+    game = NInRow
+    config = MuZeroConfig(max_moves = 3**2, batch_size = 30, window_size = 30, num_simulations = 30, action_space_size = 3**2+1, board_gridsize = 3, td_steps = 3*3, torch_device = torch_device)
 
     if option == 1:
         game = game()
@@ -354,7 +358,7 @@ if __name__ == '__main__':
             print(f'{currentTime()} loading network Data/{steps}')
             storage.save_network(steps, network)
 
-        muzero(config, game, optimizer, storage)
+        muzero(config, game, optimizer, network, storage)
 
     elif option == 4:
         networks = listdir('Data/')
@@ -368,11 +372,11 @@ if __name__ == '__main__':
             
             steps, network, _ = loadNetwork(config, file if file != "-1" else None)
             victories = {1:0, 0:0, -1:0}
-            num_games = 200
-            for i in range(num_games):
+            num_games = 100
+            for i in range(1, num_games + 1):
                 print(f'game {i} of {num_games}')
                 winner = randomvsMuzero(Player(colour), Player(-colour), network, config, game)
 
                 victories[winner] += 1
 
-            print(f'MuZero won {victories[1]}/{num_games}, draws: {victories[0]}/{num_games}')
+                print(f'MuZero won {victories[1]}/{i}, draws: {victories[0]}/{i}')
