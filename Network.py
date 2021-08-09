@@ -4,6 +4,7 @@ import torch
 from os import listdir
 from numpy import ndarray, zeros, bool
 from Action import Action
+from pickle import load, dump, HIGHEST_PROTOCOL
 
 from MuZeroConfig import MuZeroConfig
 from NeuralNetworks import Representation, Prediction, Dynamics
@@ -61,12 +62,16 @@ def getOptimizer(config, network):
     optimizer = torch.optim.SGD(network.parameters(), lr = config.lr_init, weight_decay = config.weight_decay, momentum = config.momentum)
     return optimizer
 
-def saveNetwork(file_network: str, network: Network, optimizer: torch.optim):
+def saveNetwork(file_network: str, network: Network, optimizer: torch.optim = None, games = None):
     if not 'Data/' in file_network:
         file_network = 'Data/' + file_network
 
     torch.save(network, file_network)
-    torch.save(optimizer, 'Data/optimizer')
+    if(optimizer):
+        torch.save(optimizer, 'Data/optimizer')
+    if(games):
+        with open('Data/games', 'wb') as handle:
+            dump(games, handle, protocol = HIGHEST_PROTOCOL)
 
 def loadNetwork(config: MuZeroConfig, file_network: str = None, file_optimizer: str = None):
     network = None
@@ -106,6 +111,13 @@ def loadNetwork(config: MuZeroConfig, file_network: str = None, file_optimizer: 
                 break
 
     optimizer = torch.load('Data/' + file_optimizer) if file_optimizer else getOptimizer(config, network)
+
+    games = []
+    for f in listdir('Data/'):
+        if(f == 'games'):
+            with open('Data/games', 'rb') as handle:
+                games = load(handle)
+            break
     
-    return file_network, network.to(config.torch_device), optimizer
+    return file_network, network.to(config.torch_device), optimizer, games
 

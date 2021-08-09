@@ -15,13 +15,12 @@ from torch import mean as torchmean
 from torch import log as torchlog
 
 from Games.Othello import Othello
-from Games.NInRow import NInRow
 from MuZeroGameWrapper import MuZeroGameWrapper
 from Network import Network, getOptimizer, saveNetwork, loadNetwork
 from NeuralNetworks import Representation, Prediction, Dynamics, Block
 from Action import Action
 from Node import Node
-from MuZeroConfig import MuZeroConfig, visit_softmax_temperature
+from MuZeroConfig import MuZeroConfig
 from Player import Player
 from MinMax import MinMax
 from Storage import SharedStorage
@@ -46,14 +45,17 @@ def currentTime():
     cpu_usage = cpu_percent()
     return f'{datetime.now().strftime("%H:%M:%S")} ram/cpu usage: {ram_usage}/{cpu_usage}:'
 
-def muzero(config: MuZeroConfig, game, optimizer, network: Network = None, storage: SharedStorage = SharedStorage()):
+def muzero(config: MuZeroConfig, game, optimizer, network: Network = None, storage: SharedStorage = SharedStorage(), game_history = None):
     if not network:
         network = storage.latest_network(config)
     replay_buffer = ReplayBuffer(config)
-    selfplay_threads = []
+    
+    if(game_history):
+        replay_buffer.buffer = game_history
 
     num_decimals = 3
 
+    selfplay_threads = []
     for _ in range(config.num_threads):
         selfplay_threads.append(
             Thread(target = selfPlay, args = (config, storage, replay_buffer, game)).start()
@@ -65,7 +67,7 @@ def muzero(config: MuZeroConfig, game, optimizer, network: Network = None, stora
     for epoch in range(network.steps+1, config.training_steps+1):
         if((epoch - 1) % config.checkpoint_interval == 0 and epoch > 1):
             print(f'{currentTime()} saving network as Data/{epoch-1}')
-            saveNetwork(str(epoch-1), network, optimizer)
+            saveNetwork(str(epoch-1), network, optimizer, replay_buffer.buffer)
 
         #populate replay_buffer with selfplay games
         #if((epoch - 1) % config.refresh_replaybuffer == 0 or len(replay_buffer.buffer) == 0):
@@ -127,7 +129,7 @@ def muzero(config: MuZeroConfig, game, optimizer, network: Network = None, stora
         t.stop()
     
     storage.save_network(i, network)
-    saveNetwork(str(config.training_steps), network)
+    saveNetwork(str(config.training_steps), network, replay_buffer.buffer)
 
     return storage.latest_network()
 
@@ -256,7 +258,7 @@ def getMuZeroAction(player: Player, network: Network, config: MuZeroConfig, wrap
     else:
         idx = visits.index(max(visits))
         action = actions[idx]
-
+    
     #save search statistics
     wrapper.saveStats(node)
     return action
@@ -321,11 +323,8 @@ if __name__ == '__main__':
     option = int(option)
     storage = SharedStorage()
 
-    #config = MuZeroConfig(torch_device = torch_device)
-    #game = Othello
-
-    game = NInRow
-    config = MuZeroConfig(max_moves = 3**2, batch_size = 30, window_size = 30, num_simulations = 30, action_space_size = 3**2+1, board_gridsize = 3, td_steps = 3*3, torch_device = torch_device)
+    config = MuZeroConfig(torch_device = torch_device)
+    game = Othello
 
     if option == 1:
         game = game()
@@ -339,38 +338,38 @@ if __name__ == '__main__':
     elif option == 2:
         networks = listdir('Data/')
         if(len(networks) != 0):
-            file = None
+            file = '-1'
             while file not in networks + ['-1']:
                 print(f'Available networks: {", ".join(networks)}')
                 file = input('Enter name of network to import, -1 for latest ')
 
             colour = 1 #let player play black
 
-            steps, network, _ = loadNetwork(config, file if file != "-1" else None)
+            steps, network, _, _ = loadNetwork(config, file if file != "-1" else None)
 
             humanVsMuZero(colour, network, config, game)
 
     elif option == 3:
         #load latest saved network
-        steps, network, optimizer = loadNetwork(config)
+        steps, network, optimizer, game_history = loadNetwork(config)
 
         if(type(steps) == int):
             print(f'{currentTime()} loading network Data/{steps}')
             storage.save_network(steps, network)
 
-        muzero(config, game, optimizer, network, storage)
+        muzero(config, game, optimizer, network, storage, game_history)
 
     elif option == 4:
         networks = listdir('Data/')
         if(len(networks) != 0):
-            file = None
+            file = '-1'
             while file not in networks + ['-1']:
                 print(f'Available networks: {", ".join(networks)}')
                 file = input('Enter name of network to import, -1 for latest ')
 
             colour = 1 #muzero plays black
             
-            steps, network, _ = loadNetwork(config, file if file != "-1" else None)
+            steps, network, _, _ = loadNetwork(config, file if file != "-1" else None)
             victories = {1:0, 0:0, -1:0}
             num_games = 100
             for i in range(1, num_games + 1):
