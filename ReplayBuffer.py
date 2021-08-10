@@ -19,13 +19,7 @@ class ReplayBuffer(object):
         self.buffer.append(wrapper)
 
     def sample_batch(self, num_unroll_steps: int, td_steps: int):
-        if(self.batch_size > len(self.buffer)):
-            batch_size = len(self.buffer)
-        else:
-            batch_size = self.batch_size
-            
-        #games = choice(self.buffer, batch_size, replace=False)
-        games = [self.sample_game() for _ in range(batch_size)]
+        games = [self.sample_game() for _ in range(self.batch_size)]
         game_pos = [(g, self.sample_position(g)) for g in games]
         
         return [(g.getImage(i),

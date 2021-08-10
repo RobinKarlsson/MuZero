@@ -207,8 +207,7 @@ def MCTS(config: MuZeroConfig, root_node: Node, game_wrapper: MuZeroGameWrapper,
             node.visit_count += 1
             node.value_sum += value.item() if node.to_play == history.last_action().player else -value.item()
 
-            #minmax.newBoundary(node.discount * node.value() + node.reward)
-            minmax.newBoundary(node.value())
+            minmax.newBoundary(node.discount * node.value() + node.reward)
             value = value * config.discount + node.reward
 
     game_wrapper.action_history.history = game_wrapper.action_history.history[:game_wrapper_history_len]
